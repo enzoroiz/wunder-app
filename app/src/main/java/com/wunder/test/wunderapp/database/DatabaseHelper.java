@@ -1,4 +1,4 @@
-package com.wunder.test.wunderapp;
+package com.wunder.test.wunderapp.database;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -7,14 +7,18 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import com.google.android.gms.maps.model.LatLng;
+import com.wunder.test.wunderapp.model.Car;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
+    // Database metadata
     private static final int DATABASE_VERSION = 2;
     public static final String DATABASE = "cars.db";
     public static final String TABLE = "cars";
+
+    // Columns
     public static final String COLUMN_ID = "id";
     public static final String COLUMN_ADDRESS = "address";
     public static final String COLUMN_LAT = "lat";
@@ -25,6 +29,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_INTERIOR = "interior";
     public static final String COLUMN_NAME = "name";
     public static final String COLUMN_VIN = "vin";
+
+    // Column indexes
     public static final int INDEX_ID = 0;
     public static final int INDEX_ADDRESS = 1;
     public static final int INDEX_ENGINE_TYPE = 2;
@@ -42,6 +48,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase sqLiteDatabase) {
+        // Create table
         sqLiteDatabase.execSQL("CREATE TABLE " + TABLE + " (" +
                 COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 COLUMN_ADDRESS + " TEXT, " +
@@ -57,11 +64,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase sqLiteDatabase, int oldVersion, int newVersion) {
+        // Upgrade table
         sqLiteDatabase.execSQL("DROP TABLE IF EXISTS " + TABLE);
         onCreate(sqLiteDatabase);
     }
 
     public long saveCar(Car car) {
+        // Insert car data into table
         SQLiteDatabase database = this.getWritableDatabase();
         ContentValues contentValues = new ContentValues();
         contentValues.put(COLUMN_ADDRESS, car.getAddress());
@@ -78,11 +87,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public List<Car> getCars() {
+        // Retrieve car data
         List<Car> cars = new ArrayList<>();
         SQLiteDatabase database = this.getWritableDatabase();
+
+        // Select all cars
         Cursor cursor = database.rawQuery("SELECT * FROM " +  TABLE, null);
         while (cursor.moveToNext()) {
             Car car = new Car(cursor.getString(DatabaseHelper.INDEX_NAME), cursor.getString(DatabaseHelper.INDEX_VIN));
+
+            // Set car data
             car.setId(cursor.getInt(DatabaseHelper.INDEX_ID));
             car.setInterior(cursor.getString(DatabaseHelper.INDEX_INTERIOR));
             car.setFuel(cursor.getString(DatabaseHelper.INDEX_FUEL));
@@ -100,11 +114,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public Car getCarById(long carId) {
+        // Retrieve car by id
         Car car = null;
         SQLiteDatabase database = this.getWritableDatabase();
         Cursor cursor = database.rawQuery("SELECT * FROM " +  TABLE + " WHERE " + COLUMN_ID + "=" + carId, null);
+
         if (cursor.moveToFirst()) {
             car = new Car(cursor.getString(DatabaseHelper.INDEX_NAME), cursor.getString(DatabaseHelper.INDEX_VIN));
+
+            // Set car data
             car.setId(cursor.getInt(DatabaseHelper.INDEX_ID));
             car.setInterior(cursor.getString(DatabaseHelper.INDEX_INTERIOR));
             car.setFuel(cursor.getString(DatabaseHelper.INDEX_FUEL));

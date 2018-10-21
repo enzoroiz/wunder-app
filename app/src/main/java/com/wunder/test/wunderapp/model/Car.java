@@ -1,4 +1,4 @@
-package com.wunder.test.wunderapp;
+package com.wunder.test.wunderapp.model;
 
 import com.google.android.gms.maps.model.LatLng;
 
