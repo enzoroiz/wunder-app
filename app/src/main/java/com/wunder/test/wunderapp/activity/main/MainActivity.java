@@ -8,15 +8,12 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.widget.Toast;
 
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.google.android.gms.maps.model.LatLng;
 import com.wunder.test.wunderapp.database.DatabaseHelper;
 import com.wunder.test.wunderapp.R;
 import com.wunder.test.wunderapp.model.Car;
+import com.wunder.test.wunderapp.service.base.HttpService;
+import com.wunder.test.wunderapp.service.base.ResponseListener;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -25,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-
     private final String DATA_URL = "https://s3-us-west-2.amazonaws.com/wunderbucket/locations.json";
     private DatabaseHelper databaseHelper;
     private RecyclerView recyclerView;
@@ -40,13 +36,13 @@ public class MainActivity extends AppCompatActivity {
         // Database helper instance
         databaseHelper = new DatabaseHelper(this);
 
+        // Layout
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        cars = new ArrayList<>();
-
         // Get data
+        cars = new ArrayList<>();
         getCarsData();
     }
 
@@ -58,64 +54,56 @@ public class MainActivity extends AppCompatActivity {
         progressDialog.setMessage("Loading data...");
         progressDialog.show();
 
-        // Make request to get data
-        // TODO: Create service class to make API calls
-        StringRequest request = new StringRequest(StringRequest.Method.GET,
-                DATA_URL,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        progressDialog.dismiss();
-                        try {
-                            JSONObject json = new JSONObject(response);
-                            JSONArray placemarks = json.getJSONArray("placemarks");
+        // Make API request
+        HttpService.post(this, DATA_URL, new ResponseListener() {
+            @Override
+            public void onError(String message) {
+                // Display error if any
+                progressDialog.dismiss();
+                Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
+            }
 
-                            // For each placemark
-                            for (int i = 0; i < placemarks.length(); i++) {
-                                JSONObject placemark = placemarks.getJSONObject(i);
+            @Override
+            public void onResponse(String response) {
+                progressDialog.dismiss();
+                try {
+                    JSONObject json = new JSONObject(response);
+                    JSONArray placemarks = json.getJSONArray("placemarks");
 
-                                // Set data to car
-                                Car car = new Car(placemark.getString("name"), placemark.getString("vin"));
-                                car.setAddress(placemark.getString("address"));
-                                car.setEngineType(placemark.getString("engineType"));
-                                car.setExterior(placemark.getString("exterior"));
-                                car.setFuel(placemark.getString("fuel"));
-                                car.setInterior(placemark.getString("interior"));
+                    // For each placemark
+                    for (int i = 0; i < placemarks.length(); i++) {
+                        JSONObject placemark = placemarks.getJSONObject(i);
 
-                                // Set Google Maps coordinates
-                                JSONArray coordinates = placemark.getJSONArray("coordinates");
-                                LatLng location = new LatLng(coordinates.getDouble(1), coordinates.getDouble(0));
-                                car.setLocation(location);
+                        // Set data to car
+                        Car car = new Car(placemark.getString("name"), placemark.getString("vin"));
+                        car.setAddress(placemark.getString("address"));
+                        car.setEngineType(placemark.getString("engineType"));
+                        car.setExterior(placemark.getString("exterior"));
+                        car.setFuel(placemark.getString("fuel"));
+                        car.setInterior(placemark.getString("interior"));
 
-                                // Insert car into database
-                                long insertedId = databaseHelper.saveCar(car);
-                                if (insertedId != -1) {
-                                    car.setId(insertedId);
-                                    cars.add(car);
-                                } else {
-                                    throw new Exception("There was a problem while fetching data, please contact the support team");
-                                }
-                            }
+                        // Set Google Maps coordinates
+                        JSONArray coordinates = placemark.getJSONArray("coordinates");
+                        LatLng location = new LatLng(coordinates.getDouble(1), coordinates.getDouble(0));
+                        car.setLocation(location);
 
-                            // Display car into the list of cars
-                            adapter = new CarListAdapter(cars, context);
-                            recyclerView.setAdapter(adapter);
-                        } catch (Exception e) {
-                            e.printStackTrace();
+                        // Insert car into database
+                        long insertedId = databaseHelper.saveCar(car);
+                        if (insertedId != -1) {
+                            car.setId(insertedId);
+                            cars.add(car);
+                        } else {
+                            throw new Exception("There was a problem while fetching data, please contact the support team");
                         }
                     }
-                },
-                new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        // Display error if any
-                        progressDialog.dismiss();
-                        Toast.makeText(getApplicationContext(), error.getMessage(), Toast.LENGTH_LONG).show();
-                    }
-                });
 
-        // Make request
-        RequestQueue queue = Volley.newRequestQueue(this);
-        queue.add(request);
+                    // Display car into the list of cars
+                    adapter = new CarListAdapter(cars, context);
+                    recyclerView.setAdapter(adapter);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 }
